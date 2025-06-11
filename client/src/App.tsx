@@ -13,6 +13,7 @@ const MyJobsPage = lazy(() => import("@/pages/MyJobsPage"));
 const SavedJobsPage = lazy(() => import("@/pages/SavedJobsPage"));
 const MessagesPage = lazy(() => import("@/pages/MessagesPage"));
 const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
+const NewJobPage = lazy(() => import("@/pages/NewJobPage"));
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -23,6 +24,7 @@ function App() {
           <Route path="/" element={<AppWrapper />}>
             <Route index element={<HomePage />} />
             <Route path="/my-jobs" element={<MyJobsPage />} />
+            <Route path="/post-job" element={<NewJobPage />} />
             <Route path="/saved-jobs" element={<SavedJobsPage />} />
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/profile" element={<ProfilePage />} />

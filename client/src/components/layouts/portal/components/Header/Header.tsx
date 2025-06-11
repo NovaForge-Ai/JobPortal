@@ -160,12 +160,12 @@ const Header = () => {
                 </Menu.Items>
               </Transition>
             </Menu>
-            <a
-              href="#"
+            <Link
+              to="/post-job"
               className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             >
               Post a Job
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="hidden lg:flex lg:flex-1 lg:justify-end flex items-center gap-x-8">
