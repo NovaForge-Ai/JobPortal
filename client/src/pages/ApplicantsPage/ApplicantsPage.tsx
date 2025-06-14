@@ -76,7 +76,7 @@ const ApplicantsPage = () => {
         // If "all" is selected, we need to fetch applications for each job
         const allApplications: Applicant[] = [];
         for (const job of jobs) {
-          const jobResponse = await httpService.get<ApplicationsResponse>(`/job/${job._id}/applications`, {
+          const jobResponse = await httpService.get<ApplicationsResponse>(`/applications/job/${job._id}`, {
             params: {
               search: searchQuery
             }
@@ -88,7 +88,7 @@ const ApplicantsPage = () => {
         setApplicants(allApplications);
       } else {
         // Fetch applications for a specific job
-        response = await httpService.get<ApplicationsResponse>(`/job/${selectedJob}/applications`, {
+        response = await httpService.get<ApplicationsResponse>(`/applications/job/${selectedJob}`, {
           params: {
             search: searchQuery
           }
@@ -122,7 +122,7 @@ const ApplicantsPage = () => {
 
   const handleStatusChange = async (applicantId: string, newStatus: Applicant['status']) => {
     try {
-      await httpService.put(`/job/applications/${applicantId}`, { status: newStatus });
+      await httpService.put(`/applications/${applicantId}`, { status: newStatus });
       fetchApplicants(); // Refresh the list
     } catch (err: any) {
       console.error('Error updating applicant status:', err);

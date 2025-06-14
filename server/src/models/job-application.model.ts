@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IJobApplication extends Document {
   job_id: mongoose.Types.ObjectId;
   user_id: mongoose.Types.ObjectId;
-  status: "pending" | "reviewed" | "shortlisted" | "rejected";
+  status: "pending" | "reviewed" | "shortlisted" | "rejected" | "withdrawn";
   applied_date: Date;
   resume_url?: string;
 }
@@ -22,7 +22,7 @@ const JobApplicationSchema = new Schema<IJobApplication>(
     },
     status: {
       type: String,
-      enum: ["pending", "reviewed", "shortlisted", "rejected"],
+      enum: ["pending", "reviewed", "shortlisted", "rejected", "withdrawn"],
       default: "pending",
     },
     applied_date: {

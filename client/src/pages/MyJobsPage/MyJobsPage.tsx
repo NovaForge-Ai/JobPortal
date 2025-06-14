@@ -3,6 +3,7 @@ import HttpService from "@/core/http.service";
 import PortalLayout from "@/components/layouts/portal/PortalLayout";
 import { MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import JobDetailsModal from "@/components/jobs/JobDetailsModal/JobDetailsModal";
+import ApplicationService from "@/services/application.service";
 
 const httpService = HttpService.getInstance();
 
@@ -72,28 +73,19 @@ const MyJobsPage = () => {
   const fetchApplications = async (page: number = 1) => {
     try {
       setLoading(true);
-      const response = await httpService.get<{ applications: JobApplication[], pagination: Pagination }>('/job/applications', {
-        params: {
-          status: statusFilter !== "all" ? statusFilter : undefined,
-          search: searchQuery,
-          page,
-          limit: 10,
-          sortBy,
-          sortOrder
-        }
-      });
-      
-      if (!response.data) {
-        throw new Error('No data received from server');
-      }
-
+      const applicationService = ApplicationService.getInstance();
+      const response = await applicationService.getUserApplications(page, 10, statusFilter !== "all" ? statusFilter : undefined);
       // Ensure we have valid data
-      const validApplications = (response.data.applications || []).filter(app => 
+      const validApplications = (response.applications || []).filter((app: any) => 
         app && app.job_id && app.job_id.job_name
       );
-
       setApplications(validApplications);
-      setPagination(response.data.pagination || initialPagination);
+      setPagination({
+        total: response.total,
+        page: response.page,
+        limit: 10,
+        pages: response.totalPages || 0
+      });
       setError(null);
     } catch (err: any) {
       console.error('Error fetching applications:', err);
@@ -111,7 +103,8 @@ const MyJobsPage = () => {
 
   const handleWithdrawApplication = async (applicationId: string) => {
     try {
-      await httpService.delete(`/applications/${applicationId}`);
+      const applicationService = ApplicationService.getInstance();
+      await applicationService.withdrawApplication(applicationId);
       fetchApplications(pagination.page);
     } catch (err: any) {
       console.error('Error withdrawing application:', err);

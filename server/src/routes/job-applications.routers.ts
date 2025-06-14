@@ -8,27 +8,37 @@ export default class JobApplicationsRoutes {
   constructor() {
     this.router = Router();
     this.routes();
+    console.log('JobApplicationsRoutes initialized with routes:', this.router.stack.map(r => r.route?.path));
   }
 
   private routes() {
-    this.router.post(
-      "/:id/apply",
-      asyncWrapper(JobApplicationsController.applyForJob)
-    );
+    // Get all applications for a user
     this.router.get(
-      "/:id/applications",
-      asyncWrapper(JobApplicationsController.getJobApplications)
-    );
-    this.router.get(
-      "/applications",
+      "/",
       asyncWrapper(JobApplicationsController.getUserApplications)
     );
+
+    // Apply for a job
+    this.router.post(
+      "/job/:id/apply",
+      asyncWrapper(JobApplicationsController.applyForJob)
+    );
+
+    // Get applications for a specific job
+    this.router.get(
+      "/job/:id",
+      asyncWrapper(JobApplicationsController.getJobApplications)
+    );
+
+    // Update an application
     this.router.put(
-      "/applications/:id",
+      "/:id",
       asyncWrapper(JobApplicationsController.updateJobApplication)
     );
+
+    // Delete/withdraw an application
     this.router.delete(
-      "/applications/:id",
+      "/:id",
       asyncWrapper(JobApplicationsController.deleteJobApplication)
     );
   }

@@ -13,7 +13,7 @@ export default class JobsRoutes {
 
   private routes() {
     // Public routes
-    this.router.get("/", asyncWrapper(JobsController.getJobs));
+    this.router.get("/", authMiddleware, asyncWrapper(JobsController.getJobs));
     
     // Protected routes without ID - must be before special routes
     this.router.post("/", authMiddleware, asyncWrapper(JobsController.createJob));

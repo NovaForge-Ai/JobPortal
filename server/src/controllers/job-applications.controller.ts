@@ -254,6 +254,14 @@ export default class JobApplicationsController {
         );
       }
 
+      // Only allow deletion if the application is in pending status
+      if (application.status !== "pending") {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          "Cannot delete application. Only pending applications can be deleted."
+        );
+      }
+
       await application.deleteOne();
 
       res.status(StatusCodes.OK).json({

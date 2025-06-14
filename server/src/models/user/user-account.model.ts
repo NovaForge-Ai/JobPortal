@@ -119,12 +119,13 @@ UserAccountSchema.methods.generateJWT = function () {
   const payload = {
     _id: this._id,
     email: this.email,
+    user_type_id: this.user_type_id,
+    user_type_name: (this.user_type_id as any)?.user_type_name,
+    exp: Math.floor(expirationDate.getTime() / 1000)
   };
 
   const jwtSecret = process.env.JWT_SECRET || "your_jwt_secret_key";
-  return jwt.sign(payload, jwtSecret, {
-    expiresIn: parseInt((expirationDate.getTime() / 1000).toString(), 10),
-  });
+  return jwt.sign(payload, jwtSecret);
 };
 
 const UserAccount = mongoose.model("UserAccount", UserAccountSchema);

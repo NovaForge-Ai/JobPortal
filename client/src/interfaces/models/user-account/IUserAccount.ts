@@ -1,6 +1,7 @@
 export interface IUserAccount {
   _id: string;
   user_type_id: string;
+  user_type_name?: string;
   email: string;
   password: string;
   sms_notification_active: boolean;

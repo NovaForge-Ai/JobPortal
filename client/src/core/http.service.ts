@@ -52,11 +52,17 @@ class HttpService {
       (config: InternalAxiosRequestConfig) => {
         const token = StorageService.getItem("access_token");
         console.log('Request interceptor - Token:', token);
+        console.log('Request interceptor - URL:', config.url);
+        console.log('Request interceptor - Method:', config.method);
+        console.log('Request interceptor - Original headers:', config.headers);
+        
         if (token) {
           config.headers = config.headers || {};
           config.headers.Authorization = `Bearer ${token}`;
           config.headers.Accept = "application/json";
-          console.log('Request headers:', config.headers);
+          console.log('Request interceptor - Updated headers:', config.headers);
+        } else {
+          console.log('Request interceptor - No token found');
         }
         return config;
       },

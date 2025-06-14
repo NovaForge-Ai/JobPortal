@@ -14,6 +14,8 @@ import { Link, useNavigate } from "react-router-dom";
 import JobFilters, { JobFilters as JobFiltersType } from "@/components/jobs/JobFilters/JobFilters";
 import JobDetailsModal from "@/components/jobs/JobDetailsModal/JobDetailsModal";
 import debounce from "lodash/debounce";
+import ApplicationService from "@/services/application.service";
+import { toast } from "react-hot-toast";
 
 const httpService = HttpService.getInstance();
 
@@ -27,6 +29,7 @@ interface Job {
   required_qualifications: string;
   visa_sponsorship: boolean;
   travel_benefits: boolean;
+  benefits?: string[];
   created_date: string;
   company_id?: {
     company_name: string;
@@ -36,6 +39,29 @@ interface Job {
   };
   applicants_count?: number;
   is_saved?: boolean;
+}
+
+interface JobsResponse {
+  jobs: Job[];
+}
+
+interface Application {
+  _id: string;
+  job_id: {
+    _id: string;
+    job_name: string;
+    company_id: {
+      company_name: string;
+    };
+    job_location: string;
+    salary: string;
+  };
+  status: string;
+  applied_date: string;
+}
+
+interface ApplicationsResponse {
+  applications: Application[];
 }
 
 interface Pagination {
@@ -76,6 +102,9 @@ const HomePage = () => {
   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const MAX_RETRIES = 3;
+  const [locationFilter, setLocationFilter] = useState("");
+  const [jobTypeFilter, setJobTypeFilter] = useState("");
+  const [experienceFilter, setExperienceFilter] = useState("");
 
   useEffect(() => {
     console.log('HomePage - Auth State:', { isAuthenticated, userType });
@@ -280,16 +309,16 @@ const HomePage = () => {
     debouncedFetchJobs(1, searchQuery, filters);
   };
 
-  const handleApplyJob = async (jobId: string) => {
+  const handleApply = async (jobId: string) => {
     try {
-      await httpService.post(`/job/${jobId}/apply`);
-      // Show success message
-      alert("Application submitted successfully!");
-      // Refresh the jobs list
-      debouncedFetchJobs(1, searchQuery, filters);
+      const applicationService = ApplicationService.getInstance();
+      await applicationService.applyForJob(jobId);
+      toast.success('Application submitted successfully!');
+      // Refresh job listings to update the UI
+      debouncedFetchJobs(pagination.page, searchQuery, filters);
     } catch (error: any) {
       console.error('Error applying for job:', error);
-      alert(error.response?.data?.message || 'Failed to apply for job');
+      toast.error(error.response?.data?.message || 'Failed to apply for job');
     }
   };
 
@@ -490,7 +519,7 @@ const HomePage = () => {
                               {job.job_name}
                             </h4>
                             <p className="text-sm text-gray-500">
-                              {job.company_id?.company_name || 'Company Information Not Available'}
+                              {job.company_id?.company_name}
                             </p>
                             <p className="text-sm text-gray-500">{job.job_location}</p>
                           </div>
@@ -502,7 +531,7 @@ const HomePage = () => {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleApplyJob(job._id);
+                                handleApply(job._id);
                               }}
                               className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                             >
