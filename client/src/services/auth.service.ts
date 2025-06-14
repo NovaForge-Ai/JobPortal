@@ -19,6 +19,10 @@ interface LoginResponse {
     email: string;
     user_type_name: string;
     user_type?: string;
+    company?: {
+      _id: string;
+      company_name: string;
+    };
     [key: string]: any;
   };
 }
@@ -66,31 +70,47 @@ class AuthService {
       
       console.log('Final user type:', response.data.user.user_type);
       
+      // Store token
       if (response.data?.token) {
         console.log('Auth service - Setting access token:', response.data.token);
         StorageService.setItem("access_token", response.data.token);
         this.httpService.setAuthToken(response.data.token);
       } else {
         console.error('Auth service - No token in response:', response.data);
+        throw new Error('Invalid login response: missing token');
       }
 
       // Store user data
       StorageService.setItem("user", response.data.user);
 
       // Store company ID if available
-      if (response.data.user.company?._id) {
-        console.log('Auth service - Setting company ID:', response.data.user.company._id);
-        StorageService.setItem("company_id", response.data.user.company._id.toString());
-        
-        // Verify storage
-        const storedCompanyId = StorageService.getItem("company_id");
-        console.log('Auth service - Verified stored company ID:', storedCompanyId);
-        
-        if (!storedCompanyId) {
-          console.error('Auth service - Failed to store company ID');
+      if (response.data.user.user_type_name === 'hr_recruiter') {
+        if (response.data.user.company?._id) {
+          const companyId = response.data.user.company._id.toString();
+          console.log('Auth service - Setting company ID:', companyId);
+          
+          // Clear any existing company ID first
+          try {
+            StorageService.removeItem("company_id");
+          } catch (error) {
+            console.warn('No existing company ID to clear');
+          }
+          
+          // Store the new company ID
+          StorageService.setItem("company_id", companyId);
+          
+          // Verify storage
+          const storedCompanyId = StorageService.getItem("company_id");
+          console.log('Auth service - Verified stored company ID:', storedCompanyId);
+          
+          if (!storedCompanyId) {
+            console.error('Auth service - Failed to store company ID');
+            throw new Error('Failed to store company ID');
+          }
+        } else {
+          console.error('Auth service - No company data in login response for HR recruiter:', response.data.user);
+          throw new Error('No company data found for HR recruiter');
         }
-      } else {
-        console.error('Auth service - No company data in login response:', response.data.user);
       }
       
       return response.data;
@@ -117,8 +137,18 @@ class AuthService {
       if (response.data.message === 'User account created successfully') {
         // If this is an HR recruiter and we have company data, store it
         if (payload.user_type_name === "hr_recruiter" && response.data.user.company?._id) {
-          console.log('Auth service - Setting company ID from registration:', response.data.user.company._id);
-          StorageService.setItem("company_id", response.data.user.company._id.toString());
+          const companyId = response.data.user.company._id.toString();
+          console.log('Auth service - Setting company ID from registration:', companyId);
+          
+          // Clear any existing company ID first
+          try {
+            StorageService.removeItem("company_id");
+          } catch (error) {
+            console.warn('No existing company ID to clear');
+          }
+          
+          // Store the new company ID
+          StorageService.setItem("company_id", companyId);
           
           // Verify storage
           const storedCompanyId = StorageService.getItem("company_id");
@@ -126,6 +156,7 @@ class AuthService {
           
           if (!storedCompanyId) {
             console.error('Auth service - Failed to store company ID');
+            throw new Error('Failed to store company ID');
           }
         }
         return response;
@@ -133,7 +164,7 @@ class AuthService {
       
       // If we have a user object, store it
       if (response.data.user) {
-        localStorage.setItem("user", JSON.stringify(response.data.user));
+        StorageService.setItem("user", response.data.user);
       }
       
       return response;

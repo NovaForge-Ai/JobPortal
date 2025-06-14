@@ -61,30 +61,48 @@ const useRegisterForm = () => {
       // Company fields validation
       company_name: Yup.string().when("user_type_name", {
         is: "hr_recruiter",
-        then: (schema) => schema.required("Company name is required"),
+        then: (schema) => schema
+          .required("Company name is required")
+          .min(2, "Company name must be at least 2 characters")
+          .max(100, "Company name must not exceed 100 characters"),
       }),
       company_website_url: Yup.string().when("user_type_name", {
         is: "hr_recruiter",
         then: (schema) =>
           schema
+            .required("Company website is required")
             .url("Must be a valid URL")
-            .required("Company website is required"),
+            .matches(
+              /^(https?:\/\/)?(www\.)?[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?$/,
+              "Please enter a valid website URL"
+            ),
       }),
       establishment_date: Yup.date().when("user_type_name", {
         is: "hr_recruiter",
-        then: (schema) => schema.required("Establishment date is required"),
+        then: (schema) => schema
+          .required("Establishment date is required")
+          .max(new Date(), "Establishment date cannot be in the future"),
       }),
       business_stream: Yup.string().when("user_type_name", {
         is: "hr_recruiter",
-        then: (schema) => schema.required("Business stream is required"),
+        then: (schema) => schema
+          .required("Business stream is required")
+          .test("is-valid-stream", "Please select a valid business stream", function(value) {
+            return Boolean(value && value.length > 0);
+          }),
       }),
-      profile_description: Yup.string()
-        .min(50, "Description must be at least 50 characters")
-        .max(1000, "Description must not exceed 1000 characters")
-        .when("user_type_name", {
-          is: "hr_recruiter",
-          then: (schema) => schema.required("Company profile description is required"),
-        }),
+      profile_description: Yup.string().when("user_type_name", {
+        is: "hr_recruiter",
+        then: (schema) => schema
+          .required("Company profile description is required")
+          .min(50, "Description must be at least 50 characters")
+          .max(1000, "Description must not exceed 1000 characters")
+          .test("no-special-chars", "Description contains invalid characters", value => {
+            if (!value) return true;
+            // Allow letters, numbers, spaces, and common punctuation
+            return /^[a-zA-Z0-9\s.,!?-]+$/.test(value);
+          }),
+      }),
     }),
     onSubmit: async (values) => {
       try {
@@ -109,6 +127,8 @@ const useRegisterForm = () => {
         };
 
         console.log('Submitting registration form with payload:', registrationPayload);
+        console.log('Business stream ID:', values.business_stream);
+        
         await register(registrationPayload);
         
         // Store user type in localStorage

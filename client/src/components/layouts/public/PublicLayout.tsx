@@ -12,8 +12,10 @@ const PublicLayout: FC<Props> = ({ title, children }) => {
   return (
     <>
       <div className="flex min-h-full flex-1 h-screen">
-        <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:px-20 xl:px-24">
-          {children}
+        <div className="flex flex-1 flex-col justify-center px-4 py-8 sm:px-6 lg:px-8 xl:px-12 overflow-y-auto">
+          <div className="mx-auto w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl">
+            {children}
+          </div>
         </div>
         <div className="relative hidden w-0 flex-1 lg:block">
           <img

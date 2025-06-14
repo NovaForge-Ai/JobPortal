@@ -44,7 +44,7 @@ const RegisterForm = () => {
   const isJobSeekerRegistration = form.values.user_type_name === "job_seeker";
 
   return (
-    <>
+    <div className="max-h-[calc(100vh-4rem)] overflow-y-auto px-4 py-6">
       {registerErrorMessage && (
         <div className="rounded-md bg-red-50 p-4">
           <div className="flex">
@@ -77,338 +77,354 @@ const RegisterForm = () => {
         </div>
       )}
 
-      <form onSubmit={form.handleSubmit} className="space-y-6">
-        <div>
-          <label
-            htmlFor="user_type_name"
-            className="block text-sm font-medium leading-6 text-gray-900"
-          >
-            I am a
-            <span className="text-red-500">*</span>
-          </label>
-          <div className="mt-2">
-            <select
-              id="user_type_name"
-              name="user_type_name"
-              required
-              className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              value={form.values.user_type_name}
-              disabled={form.isSubmitting}
-              onChange={form.handleChange}
+      <form onSubmit={form.handleSubmit} className="space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          <div>
+            <label
+              htmlFor="user_type_name"
+              className="block text-sm font-medium leading-6 text-gray-900"
             >
-              <option value="job_seeker">Job Seeker</option>
-              <option value="hr_recruiter">HR Recruiter</option>
-            </select>
-            {form.errors.user_type_name && (
-              <FieldError error={form.errors.user_type_name} />
-            )}
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium leading-6 text-gray-900"
-          >
-            Email
-            <span className="text-red-500">*</span>
-          </label>
-          <div className="mt-2">
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              value={form.values.email}
-              disabled={form.isSubmitting}
-              onChange={form.handleChange}
-              placeholder="Enter your email"
-            />
-            {form.errors.email && <FieldError error={form.errors.email} />}
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium leading-6 text-gray-900"
-          >
-            Password
-            <span className="text-red-500">*</span>
-          </label>
-          <div className="mt-2">
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              value={form.values.password}
-              disabled={form.isSubmitting}
-              onChange={form.handleChange}
-              placeholder="Enter your password"
-            />
-            {form.errors.password && (
-              <FieldError error={form.errors.password} />
-            )}
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="confirmPassword"
-            className="block text-sm font-medium leading-6 text-gray-900"
-          >
-            Confirm Password
-            <span className="text-red-500">*</span>
-          </label>
-          <div className="mt-2">
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              required
-              className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              value={form.values.confirmPassword}
-              disabled={form.isSubmitting}
-              onChange={form.handleChange}
-              placeholder="Confirm your password"
-            />
-            {form.errors.confirmPassword && (
-              <FieldError error={form.errors.confirmPassword} />
-            )}
-          </div>
-        </div>
-
-        {isJobSeekerRegistration && (
-          <>
-            <div>
-              <label
-                htmlFor="phone"
-                className="block text-sm font-medium leading-6 text-gray-900"
+              I am a
+              <span className="text-red-500">*</span>
+            </label>
+            <div className="mt-2">
+              <select
+                id="user_type_name"
+                name="user_type_name"
+                required
+                className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base"
+                value={form.values.user_type_name}
+                disabled={form.isSubmitting}
+                onChange={(e) => {
+                  form.handleChange(e);
+                  // Reset conditional fields when user type changes
+                  if (e.target.value === "job_seeker") {
+                    form.setFieldValue("company_name", "");
+                    form.setFieldValue("company_website_url", "");
+                    form.setFieldValue("establishment_date", "");
+                    form.setFieldValue("business_stream", "");
+                    form.setFieldValue("profile_description", "");
+                  } else {
+                    form.setFieldValue("phone", "");
+                    form.setFieldValue("address", "");
+                  }
+                }}
               >
-                Phone Number
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="mt-2">
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  value={form.values.phone}
-                  disabled={form.isSubmitting}
-                  onChange={form.handleChange}
-                  placeholder="Enter your phone number"
-                />
-                {form.errors.phone && <FieldError error={form.errors.phone} />}
-              </div>
+                <option value="job_seeker">Job Seeker</option>
+                <option value="hr_recruiter">HR Recruiter</option>
+              </select>
+              {form.errors.user_type_name && (
+                <FieldError error={form.errors.user_type_name} />
+              )}
             </div>
+          </div>
 
-            <div>
-              <label
-                htmlFor="address"
-                className="block text-sm font-medium leading-6 text-gray-900"
-              >
-                Address
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="mt-2">
-                <textarea
-                  id="address"
-                  name="address"
-                  rows={3}
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  value={form.values.address}
-                  disabled={form.isSubmitting}
-                  onChange={form.handleChange}
-                  placeholder="Enter your address"
-                />
-                {form.errors.address && <FieldError error={form.errors.address} />}
-              </div>
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium leading-6 text-gray-900"
+            >
+              Email
+              <span className="text-red-500">*</span>
+            </label>
+            <div className="mt-2">
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base"
+                value={form.values.email}
+                disabled={form.isSubmitting}
+                onChange={form.handleChange}
+                placeholder="Enter your email"
+              />
+              {form.errors.email && <FieldError error={form.errors.email} />}
             </div>
-          </>
-        )}
+          </div>
 
-        {isCompanyRegistration && (
-          <>
-            <div>
-              <label
-                htmlFor="company_name"
-                className="block text-sm font-medium leading-6 text-gray-900"
-              >
-                Company Name
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="mt-2">
-                <input
-                  id="company_name"
-                  name="company_name"
-                  type="text"
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  value={form.values.company_name}
-                  disabled={form.isSubmitting}
-                  onChange={form.handleChange}
-                  placeholder="Enter your company name"
-                />
-                {form.errors.company_name && (
-                  <FieldError error={form.errors.company_name} />
-                )}
-              </div>
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium leading-6 text-gray-900"
+            >
+              Password
+              <span className="text-red-500">*</span>
+            </label>
+            <div className="mt-2">
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base"
+                value={form.values.password}
+                disabled={form.isSubmitting}
+                onChange={form.handleChange}
+                placeholder="Enter your password"
+              />
+              {form.errors.password && <FieldError error={form.errors.password} />}
             </div>
+          </div>
 
-            <div>
-              <label
-                htmlFor="business_stream"
-                className="block text-sm font-medium leading-6 text-gray-900"
-              >
-                Business Stream
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="mt-2">
-                <select
-                  id="business_stream"
-                  name="business_stream"
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  value={form.values.business_stream}
-                  disabled={form.isSubmitting || isLoading}
-                  onChange={form.handleChange}
+          <div>
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium leading-6 text-gray-900"
+            >
+              Confirm Password
+              <span className="text-red-500">*</span>
+            </label>
+            <div className="mt-2">
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base"
+                value={form.values.confirmPassword}
+                disabled={form.isSubmitting}
+                onChange={form.handleChange}
+                placeholder="Confirm your password"
+              />
+              {form.errors.confirmPassword && (
+                <FieldError error={form.errors.confirmPassword} />
+              )}
+            </div>
+          </div>
+
+          {isJobSeekerRegistration && (
+            <>
+              <div>
+                <label
+                  htmlFor="phone"
+                  className="block text-sm font-medium leading-6 text-gray-900"
                 >
-                  <option value="">Select a business stream</option>
-                  {businessStreams.map((stream) => (
-                    <option key={stream._id} value={stream.business_stream_name}>
-                      {stream.business_stream_name}
-                    </option>
-                  ))}
-                </select>
-                {form.errors.business_stream && (
-                  <FieldError error={form.errors.business_stream} />
-                )}
+                  Phone Number
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    required
+                    className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base"
+                    value={form.values.phone}
+                    disabled={form.isSubmitting}
+                    onChange={form.handleChange}
+                    placeholder="Enter your phone number"
+                  />
+                  {form.errors.phone && <FieldError error={form.errors.phone} />}
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label
-                htmlFor="company_website_url"
-                className="block text-sm font-medium leading-6 text-gray-900"
-              >
-                Company Website
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="mt-2">
-                <input
-                  id="company_website_url"
-                  name="company_website_url"
-                  type="url"
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  value={form.values.company_website_url}
-                  disabled={form.isSubmitting}
-                  onChange={form.handleChange}
-                  placeholder="https://www.example.com"
-                />
-                {form.errors.company_website_url && (
-                  <FieldError error={form.errors.company_website_url} />
-                )}
+              <div>
+                <label
+                  htmlFor="address"
+                  className="block text-sm font-medium leading-6 text-gray-900"
+                >
+                  Address
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="address"
+                    name="address"
+                    type="text"
+                    required
+                    className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base"
+                    value={form.values.address}
+                    disabled={form.isSubmitting}
+                    onChange={form.handleChange}
+                    placeholder="Enter your address"
+                  />
+                  {form.errors.address && <FieldError error={form.errors.address} />}
+                </div>
               </div>
-            </div>
+            </>
+          )}
 
-            <div>
-              <label
-                htmlFor="establishment_date"
-                className="block text-sm font-medium leading-6 text-gray-900"
-              >
-                Establishment Date
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="mt-2">
-                <input
-                  id="establishment_date"
-                  name="establishment_date"
-                  type="date"
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  value={form.values.establishment_date}
-                  disabled={form.isSubmitting}
-                  onChange={form.handleChange}
-                />
-                {form.errors.establishment_date && (
-                  <FieldError error={form.errors.establishment_date} />
-                )}
+          {isCompanyRegistration && (
+            <>
+              <div>
+                <label
+                  htmlFor="company_name"
+                  className="block text-sm font-medium leading-6 text-gray-900"
+                >
+                  Company Name
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="company_name"
+                    name="company_name"
+                    type="text"
+                    required
+                    className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base"
+                    value={form.values.company_name}
+                    disabled={form.isSubmitting}
+                    onChange={form.handleChange}
+                    placeholder="Enter your company name"
+                  />
+                  {form.errors.company_name && (
+                    <FieldError error={form.errors.company_name} />
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label
-                htmlFor="profile_description"
-                className="block text-sm font-medium leading-6 text-gray-900"
-              >
-                Company Profile Description
-                <span className="text-red-500">*</span>
-              </label>
-              <div className="mt-2">
-                <textarea
-                  id="profile_description"
-                  name="profile_description"
-                  rows={4}
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  value={form.values.profile_description}
-                  disabled={form.isSubmitting}
-                  onChange={form.handleChange}
-                  placeholder="Describe your company, its mission, values, and culture"
-                />
-                {form.errors.profile_description && (
-                  <FieldError error={form.errors.profile_description} />
-                )}
+              <div>
+                <label
+                  htmlFor="business_stream"
+                  className="block text-sm font-medium leading-6 text-gray-900"
+                >
+                  Business Stream
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-2">
+                  <select
+                    id="business_stream"
+                    name="business_stream"
+                    required
+                    className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base"
+                    value={form.values.business_stream}
+                    disabled={form.isSubmitting}
+                    onChange={form.handleChange}
+                  >
+                    <option value="">Select a business stream</option>
+                    {businessStreams.map((stream) => (
+                      <option key={stream._id} value={stream._id}>
+                        {stream.business_stream_name}
+                      </option>
+                    ))}
+                  </select>
+                  {form.errors.business_stream && (
+                    <FieldError error={form.errors.business_stream} />
+                  )}
+                </div>
               </div>
-            </div>
-          </>
-        )}
 
-        <div className="flex items-center">
-          <input
-            id="termsConditions"
-            name="termsConditions"
-            type="checkbox"
-            required
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-            checked={form.values.termsConditions}
-            disabled={form.isSubmitting}
-            onChange={form.handleChange}
-          />
-          <label
-            htmlFor="termsConditions"
-            className="ml-2 block text-sm text-gray-900"
-          >
-            I agree to the{" "}
-            <button
-              type="button"
-              onClick={handleOnOpenTermsConditionsModal}
-              className="text-indigo-600 hover:text-indigo-500"
+              <div>
+                <label
+                  htmlFor="establishment_date"
+                  className="block text-sm font-medium leading-6 text-gray-900"
+                >
+                  Establishment Date
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="establishment_date"
+                    name="establishment_date"
+                    type="date"
+                    required
+                    className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base"
+                    value={form.values.establishment_date}
+                    disabled={form.isSubmitting}
+                    onChange={form.handleChange}
+                  />
+                  {form.errors.establishment_date && (
+                    <FieldError error={form.errors.establishment_date} />
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="company_website_url"
+                  className="block text-sm font-medium leading-6 text-gray-900"
+                >
+                  Company Website
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="company_website_url"
+                    name="company_website_url"
+                    type="url"
+                    required
+                    className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base"
+                    value={form.values.company_website_url}
+                    disabled={form.isSubmitting}
+                    onChange={form.handleChange}
+                    placeholder="https://www.example.com"
+                  />
+                  {form.errors.company_website_url && (
+                    <FieldError error={form.errors.company_website_url} />
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="profile_description"
+                  className="block text-sm font-medium leading-6 text-gray-900"
+                >
+                  Company Profile Description
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-2">
+                  <textarea
+                    id="profile_description"
+                    name="profile_description"
+                    rows={4}
+                    required
+                    className="block w-full rounded-md border-0 py-2 sm:py-2.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-sm sm:text-base resize-none"
+                    value={form.values.profile_description}
+                    disabled={form.isSubmitting}
+                    onChange={form.handleChange}
+                    placeholder="Describe your company, its mission, values, and culture"
+                  />
+                  {form.errors.profile_description && (
+                    <FieldError error={form.errors.profile_description} />
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="flex items-center">
+            <input
+              id="termsConditions"
+              name="termsConditions"
+              type="checkbox"
+              required
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+              checked={form.values.termsConditions}
+              disabled={form.isSubmitting}
+              onChange={form.handleChange}
+            />
+            <label
+              htmlFor="termsConditions"
+              className="ml-2 block text-sm text-gray-900"
             >
-              Terms and Conditions
-            </button>
-            <span className="text-red-500">*</span>
-          </label>
-        </div>
-        {form.errors.termsConditions && (
-          <FieldError error={form.errors.termsConditions} />
-        )}
+              I agree to the{" "}
+              <button
+                type="button"
+                onClick={handleOnOpenTermsConditionsModal}
+                className="font-semibold text-indigo-600 hover:text-indigo-500"
+              >
+                Terms and Conditions
+              </button>
+              <span className="text-red-500">*</span>
+            </label>
+          </div>
+          {form.errors.termsConditions && (
+            <FieldError error={form.errors.termsConditions} />
+          )}
 
-        <div>
-          <button
-            type="submit"
-            disabled={form.isSubmitting}
-            className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
-          >
-            {form.isSubmitting ? "Registering..." : "Register"}
-          </button>
+          <div>
+            <button
+              type="submit"
+              disabled={form.isSubmitting}
+              className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {form.isSubmitting ? "Signing up..." : "Sign up"}
+            </button>
+          </div>
         </div>
       </form>
 
@@ -416,7 +432,7 @@ const RegisterForm = () => {
         open={termsConditionsModalOpen}
         onClose={handleOnCloseTermsConditionsModal}
       />
-    </>
+    </div>
   );
 };
 

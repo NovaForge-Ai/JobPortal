@@ -9,11 +9,19 @@ export interface AuthContextProps {
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextProps | undefined>(undefined);
-
 interface AuthProviderProps {
   children: ReactNode;
 }
+
+const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -33,36 +41,66 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   });
 
   const login = (token: string, user: any) => {
-    console.log('Login called with user:', user);
-    // Store token
-    StorageService.setItem("access_token", token);
-    
-    // Store user data
-    const userData = {
-      ...user,
-      user_type: user.user_type || user.user_type_name
-    };
-    console.log('Storing user data:', userData);
-    StorageService.setItem("user", userData);
-    
-    // Store company ID if available
-    if (user.company?._id) {
-      console.log('AuthProvider - Storing company ID:', user.company._id);
-      StorageService.setItem("company_id", user.company._id);
+    try {
+      console.log('Login called with user:', user);
+      
+      // Store token
+      StorageService.setItem("access_token", token);
+      
+      // Store user data
+      const userData = {
+        ...user,
+        user_type: user.user_type || user.user_type_name
+      };
+      console.log('Storing user data:', userData);
+      StorageService.setItem("user", userData);
+      
+      // Store company ID if available
+      if (user.company?._id) {
+        const companyId = user.company._id.toString();
+        console.log('AuthProvider - Storing company ID:', companyId);
+        
+        // Clear any existing company ID first
+        try {
+          StorageService.removeItem("company_id");
+        } catch (error) {
+          console.warn('No existing company ID to clear');
+        }
+        
+        // Store the new company ID
+        StorageService.setItem("company_id", companyId);
+        
+        // Verify storage
+        const storedCompanyId = StorageService.getItem("company_id");
+        console.log('AuthProvider - Verified stored company ID:', storedCompanyId);
+        
+        if (!storedCompanyId) {
+          console.error('AuthProvider - Failed to store company ID');
+          throw new Error('Failed to store company ID');
+        }
+      }
+      
+      setIsAuthenticated(true);
+      const type = userData.user_type || userData.user_type_name;
+      console.log('Setting user type to:', type);
+      setUserType(type);
+    } catch (error) {
+      console.error('Error in login:', error);
+      throw error;
     }
-    
-    setIsAuthenticated(true);
-    const type = userData.user_type || userData.user_type_name;
-    console.log('Setting user type to:', type);
-    setUserType(type);
   };
 
   const logout = () => {
-    StorageService.removeItem("access_token");
-    StorageService.removeItem("user");
-    StorageService.removeItem("company_id");
-    setIsAuthenticated(false);
-    setUserType("");
+    try {
+      StorageService.removeItem("access_token");
+      StorageService.removeItem("user");
+      StorageService.removeItem("company_id");
+      setIsAuthenticated(false);
+      setUserType("");
+    } catch (error) {
+      console.error('Error in logout:', error);
+      throw error;
+    }
   };
 
   // Check authentication status on mount
@@ -87,8 +125,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             
             // Store company ID if available
             if (userData.company?._id) {
-              console.log('AuthProvider - Storing company ID from current user:', userData.company._id);
-              StorageService.setItem("company_id", userData.company._id);
+              const companyId = userData.company._id.toString();
+              console.log('AuthProvider - Storing company ID from current user:', companyId);
+              
+              // Clear any existing company ID first
+              try {
+                StorageService.removeItem("company_id");
+              } catch (error) {
+                console.warn('No existing company ID to clear');
+              }
+              
+              // Store the new company ID
+              StorageService.setItem("company_id", companyId);
+              
+              // Verify storage
+              const storedCompanyId = StorageService.getItem("company_id");
+              console.log('AuthProvider - Verified stored company ID:', storedCompanyId);
+              
+              if (!storedCompanyId) {
+                console.error('AuthProvider - Failed to store company ID');
+                throw new Error('Failed to store company ID');
+              }
             }
             
             const type = processedUserData.user_type || processedUserData.user_type_name;
@@ -111,12 +168,4 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 }; 

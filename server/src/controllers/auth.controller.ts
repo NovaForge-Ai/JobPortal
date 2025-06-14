@@ -173,18 +173,24 @@ export default class AuthController {
           throw new BadRequestError("All company fields are required for HR recruiters", []);
         }
 
-        // Find business stream
-        console.log('Looking up business stream:', business_stream);
-        const businessStreamDoc = await BusinessStream.findOne({
-          business_stream_name: business_stream
-        });
-
-        if (!businessStreamDoc) {
-          console.error('Business stream not found:', business_stream);
-          throw new BadRequestError(`Business stream '${business_stream}' not found`, []);
+        // Find business stream by ID
+        console.log('Looking up business stream by ID:', business_stream);
+        let businessStreamDoc;
+        try {
+          businessStreamDoc = await BusinessStream.findById(business_stream);
+          console.log('Found business stream:', businessStreamDoc);
+        } catch (error) {
+          console.error('Error finding business stream:', error);
+          throw new BadRequestError(`Invalid business stream ID format`, []);
         }
 
-        console.log('Found business stream:', businessStreamDoc);
+        if (!businessStreamDoc) {
+          console.error('Business stream not found with ID:', business_stream);
+          // List all available business streams for debugging
+          const allStreams = await BusinessStream.find({});
+          console.log('Available business streams:', allStreams.map(s => ({ id: s._id, name: s.business_stream_name })));
+          throw new BadRequestError(`Business stream not found`, []);
+        }
 
         // Create company
         const company = new Company({

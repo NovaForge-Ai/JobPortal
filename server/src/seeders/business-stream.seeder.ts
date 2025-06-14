@@ -22,9 +22,12 @@ export const seedBusinessStreams = async () => {
   try {
     console.log('Starting business stream seeding...');
     
-    // Clear existing business streams
-    await BusinessStream.deleteMany({});
-    console.log('Cleared existing business streams');
+    // Check if we already have business streams
+    const existingStreams = await BusinessStream.find({});
+    if (existingStreams.length > 0) {
+      console.log('Business streams already exist, skipping seeding');
+      return existingStreams;
+    }
     
     // Create new business streams
     const streams = businessStreams.map(name => ({ business_stream_name: name }));
@@ -32,6 +35,7 @@ export const seedBusinessStreams = async () => {
     console.log('Created business streams:', createdStreams.map(s => ({ id: s._id, name: s.business_stream_name })));
     
     console.log("✅ Business streams seeded successfully");
+    return createdStreams;
   } catch (error) {
     console.error("❌ Error seeding business streams:", error);
     throw error;

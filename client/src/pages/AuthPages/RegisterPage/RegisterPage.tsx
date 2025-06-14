@@ -7,7 +7,7 @@ import Logo from "@/components/core-ui/Logo";
 const RegisterPage = () => {
   return (
     <PublicLayout title="Sign up">
-      <div className="mx-auto w-full max-w-sm lg:w-96">
+      <div className="mx-auto w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl">
         <div>
           <Logo />
           <h2 className="text-2xl font-bold leading-9 tracking-tight text-gray-900">
