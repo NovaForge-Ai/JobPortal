@@ -3,11 +3,14 @@ import path from "path";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import mongoose from "mongoose";
+import mongoose, { ConnectOptions } from "mongoose";
 import Routes from "./routes";
-import Seeders from "./seeders";
+import runSeeders from "./seeders";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import passport from "passport";
+import { configureJwtStrategy } from "./middlewares/jwt.middleware";
+import * as Models from "./models";
+
 class Application {
   public server;
 
@@ -23,11 +26,20 @@ class Application {
   }
 
   private environment() {
-    dotenv.config();
+    // Only load .env if MONGODB_URI is not set in environment
+    if (!process.env.MONGODB_URI) {
+      dotenv.config();
+    }
+    console.log('Environment variables loaded:');
+    console.log('MONGODB_URI:', process.env.MONGODB_URI);
+    console.log('PORT:', process.env.PORT);
   }
 
   private middlewares() {
-    this.server.use(cors());
+    this.server.use(cors({
+      origin: "http://localhost:5173",
+      credentials: true
+    }));
     this.server.use(express.json());
     this.server.use(express.urlencoded({ extended: true }));
   }
@@ -54,29 +66,62 @@ class Application {
     }
   }
 
-  private database() {
-    const MONGO_URL: string = process.env.MONGO_URL || "";
+  private async database() {
+    const MONGO_URL: string = process.env.MONGODB_URI || "";
+    console.log('Attempting to connect to MongoDB with URI:', MONGO_URL);
+    const maxRetries = 5;
+    let retryCount = 0;
 
-    mongoose
-      .connect(MONGO_URL, {} as any)
-      .then(async () => {
+    const options: ConnectOptions = {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      family: 4
+    };
+
+    const connectWithRetry = async () => {
+      try {
+        await mongoose.connect(MONGO_URL, options);
         console.log(`✅[Server]: Database is connected`);
-        await Seeders.run();
-      })
-      .catch((error) => {
+        
+        // Verify all models are registered
+        console.log('Verifying model registration...');
+        Object.keys(Models).forEach(modelName => {
+          if (mongoose.models[modelName]) {
+            console.log(`✅ Model registered: ${modelName}`);
+          } else {
+            console.error(`❌ Model not registered: ${modelName}`);
+          }
+        });
+        
+        // Run the seeders
+        await runSeeders();
+      } catch (error) {
         console.log(`❌[Server] Database connection error: ${error}`);
-      });
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          console.log(`Retrying database connection... (${retryCount}/${maxRetries})`);
+          setTimeout(connectWithRetry, 5000);
+        } else {
+          console.log('Max retries reached. Could not connect to database.');
+          process.exit(1);
+        }
+      }
+    };
+
+    await connectWithRetry();
   }
 
   private passport() {
     this.server.use(passport.initialize());
-    require("./middlewares/jwt.middleware")(passport);
+    configureJwtStrategy(passport);
   }
 
   public start() {
     const PORT: number = process.env.PORT
       ? parseInt(process.env.PORT, 10)
-      : 5555;
+      : 5050;
     this.server
       .listen(PORT, () => {
         if (process.env.NODE_ENV === "development") {

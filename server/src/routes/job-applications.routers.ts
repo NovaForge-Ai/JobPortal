@@ -27,5 +27,9 @@ export default class JobApplicationsRoutes {
       "/applications/:id",
       asyncWrapper(JobApplicationsController.updateJobApplication)
     );
+    this.router.delete(
+      "/applications/:id",
+      asyncWrapper(JobApplicationsController.deleteJobApplication)
+    );
   }
 }

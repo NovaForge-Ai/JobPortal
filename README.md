@@ -84,7 +84,7 @@ You need to create a `.env` file inside the `server` folder, and define the foll
 ```shell
 PORT=5555  #API -> http://localhost:5555
 NODE_ENV=development
-JWT_SECRET=yourJwtSecret
+JWT_SECRET=your_jwt_secret_key
 MONGO_URL=mongodb://localhost:27017/job-portal #With docker use this mongodb://job-portal-mongo:27017/job-portal
 ```
 

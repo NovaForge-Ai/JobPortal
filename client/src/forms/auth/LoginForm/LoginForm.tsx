@@ -1,65 +1,60 @@
+import React from "react";
+import { useLoginForm } from "./useLoginForm";
 import { Link } from "react-router-dom";
-import useLoginForm from "./useLoginForm";
 import FieldError from "@/components/core-ui/FieldError";
 import Alert from "@/components/core-ui/Alert";
 
-const LoginForm = () => {
-  const { form, loginError } = useLoginForm();
+const LoginForm: React.FC = () => {
+  const { formik } = useLoginForm();
 
   return (
     <>
-      {loginError && (
+      {formik.errors.loginError && (
         <div className="mb-4">
-          <Alert type="error" message={loginError} />
+          <Alert type="error" message={formik.errors.loginError} />
         </div>
       )}
-      <form className="space-y-6" onSubmit={form.handleSubmit} noValidate>
+      <form onSubmit={formik.handleSubmit} className="space-y-6">
         <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium leading-6 text-gray-900"
-          >
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
             Email address
-            <span className="text-red-500">*</span>
           </label>
-          <div className="mt-2">
+          <div className="mt-1">
             <input
               id="email"
               name="email"
               type="email"
               autoComplete="email"
               required
-              className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              readOnly={form.isSubmitting}
-              value={form.values.email}
-              onChange={form.handleChange}
+              value={formik.values.email}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
-            {form.errors.email && <FieldError error={form.errors.email} />}
+            {formik.touched.email && formik.errors.email && (
+              <div className="text-red-500 text-sm mt-1">{formik.errors.email}</div>
+            )}
           </div>
         </div>
 
         <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium leading-6 text-gray-900"
-          >
+          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
             Password
-            <span className="text-red-500">*</span>
           </label>
-          <div className="mt-2">
+          <div className="mt-1">
             <input
               id="password"
               name="password"
               type="password"
               autoComplete="current-password"
               required
-              className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              readOnly={form.isSubmitting}
-              value={form.values.password}
-              onChange={form.handleChange}
+              value={formik.values.password}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
-            {form.errors.password && (
-              <FieldError error={form.errors.password} />
+            {formik.touched.password && formik.errors.password && (
+              <div className="text-red-500 text-sm mt-1">{formik.errors.password}</div>
             )}
           </div>
         </div>
@@ -67,25 +62,21 @@ const LoginForm = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <input
-              id="remember-me"
-              name="remember-me"
+              id="rememberMe"
+              name="rememberMe"
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+              checked={formik.values.rememberMe}
+              onChange={formik.handleChange}
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
             />
-            <label
-              htmlFor="remember-me"
-              className="ml-3 block text-sm leading-6 text-gray-700"
-            >
+            <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-900">
               Remember me
             </label>
           </div>
 
-          <div className="text-sm leading-6">
-            <Link
-              to="/forgot-password"
-              className="font-semibold text-indigo-600 hover:text-indigo-500"
-            >
-              Forgot password?
+          <div className="text-sm">
+            <Link to="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
+              Forgot your password?
             </Link>
           </div>
         </div>
@@ -93,10 +84,10 @@ const LoginForm = () => {
         <div>
           <button
             type="submit"
-            className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            disabled={form.isSubmitting}
+            disabled={formik.isSubmitting}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            Sign in
+            {formik.isSubmitting ? "Signing in..." : "Sign in"}
           </button>
         </div>
       </form>

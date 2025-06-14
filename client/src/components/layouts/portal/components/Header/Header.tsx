@@ -10,6 +10,8 @@ import {
   Cog8ToothIcon,
   ArrowLeftStartOnRectangleIcon,
   BookmarkIcon,
+  PlusCircleIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { Dialog, Menu, Transition } from "@headlessui/react";
 import { useAuth } from "@/providers";
@@ -18,20 +20,29 @@ import Logo from "@/components/core-ui/Logo";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, userType } = useAuth();
+
+  console.log('Header - Current user type:', userType);
+  console.log('Header - Is authenticated:', isAuthenticated);
 
   const navigation = useMemo(() => {
     if (isAuthenticated) {
-      return [
-        { name: "Home", href: "/", icon: HomeIcon },
-        { name: "My Jobs", href: "/my-jobs", icon: BriefcaseIcon },
-        { name: "Saved Jobs", href: "/saved-jobs", icon: BookmarkIcon },
-        { name: "Messages", href: "/messages", icon: ChatBubbleLeftRightIcon },
-      ];
+      if (userType === "job_seeker") {
+        return [
+          { name: "Find Jobs", href: "/", icon: HomeIcon },
+          { name: "My Applications", href: "/my-jobs", icon: BriefcaseIcon },
+          { name: "Saved Jobs", href: "/saved-jobs", icon: BookmarkIcon },
+        ];
+      } else if (userType === "hr_recruiter") {
+        return [
+          { name: "Posted Jobs", href: "/", icon: BriefcaseIcon },
+          { name: "Post a Job", href: "/post-job", icon: PlusCircleIcon },
+          { name: "Applicants", href: "/applicants", icon: UserGroupIcon },
+        ];
+      }
     }
-
     return [];
-  }, [isAuthenticated]);
+  }, [isAuthenticated, userType]);
 
   return (
     <header className="shrink-0 border-b border-gray-200 bg-white sticky top-0 z-10">
@@ -160,12 +171,14 @@ const Header = () => {
                 </Menu.Items>
               </Transition>
             </Menu>
-            <a
-              href="#"
-              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            >
-              Post a Job
-            </a>
+            {userType === "hr_recruiter" && (
+              <Link
+                to="/post-job"
+                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              >
+                Post a Job
+              </Link>
+            )}
           </div>
         ) : (
           <div className="hidden lg:flex lg:flex-1 lg:justify-end flex items-center gap-x-8">
@@ -194,7 +207,7 @@ const Header = () => {
         <Dialog.Panel className="fixed inset-y-0 right-0 z-10 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
           <div className="flex items-center justify-between">
             <div className="-m-1.5 p-1.5">
-              <span className="sr-only">JobPortal</span>
+              <span className="sr-only">JobReady</span>
               <Logo />
             </div>
             <button

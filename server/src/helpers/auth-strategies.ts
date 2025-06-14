@@ -15,7 +15,7 @@ passport.use(
         if (!user) {
           return done(null, false, { message: "User not found" });
         }
-        const validate = await (user as any).isValidPassword(password);
+        const validate = await (user as any).comparePassword(password);
         if (!validate) {
           return done(null, false, { message: "Wrong Password" });
         }

@@ -5,8 +5,10 @@ import { validate } from "class-validator";
 export default class RequestValidator {
   static validate = <T extends object>(classInstance: ClassConstructor<T>) => {
     return async (req: Request, res: Response, next: NextFunction) => {
-      const convertedObject = plainToInstance(classInstance, req.body);
-      await validate(convertedObject).then((errors: any) => {
+      try {
+        const convertedObject = plainToInstance(classInstance, req.body);
+        const errors = await validate(convertedObject);
+        
         if (errors.length > 0) {
           let rawErrors: string[] = [];
           for (const error of errors) {
@@ -18,10 +20,24 @@ export default class RequestValidator {
 
           const message = "Request validation error";
           console.log(`❌ [RequestValidator.Error]`, rawErrors);
-          res.status(400).json({ message, errors: rawErrors });
+          return res.status(400).json({ 
+            success: false,
+            message, 
+            errors: rawErrors 
+          });
         }
-      });
-      next();
+
+        // If validation passes, attach the validated object to the request
+        req.body = convertedObject;
+        next();
+      } catch (error: any) {
+        console.error('Validation error:', error);
+        return res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: [error.message]
+        });
+      }
     };
   };
 }

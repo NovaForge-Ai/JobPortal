@@ -95,8 +95,13 @@ UserAccountSchema.pre("save", function (next) {
 });
 
 // Password comparison
-UserAccountSchema.methods.comparePassword = function (password: string) {
-  return bcrypt.compareSync(password, this.password);
+UserAccountSchema.methods.comparePassword = async function (password: string) {
+  try {
+    return await bcrypt.compare(password, this.password);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
 };
 
 // Generate JWT token
@@ -107,11 +112,11 @@ UserAccountSchema.methods.generateJWT = function () {
   expirationDate.setDate(today.getDate() + 60);
 
   const payload = {
-    id: this._id,
+    _id: this._id,
     email: this.email,
   };
 
-  const jwtSecret = process.env.JWT_SECRET || "jwt_secret";
+  const jwtSecret = process.env.JWT_SECRET || "your_jwt_secret_key";
   return jwt.sign(payload, jwtSecret, {
     expiresIn: parseInt((expirationDate.getTime() / 1000).toString(), 10),
   });

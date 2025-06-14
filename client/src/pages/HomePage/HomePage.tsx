@@ -1,510 +1,612 @@
 import {
-  BookmarkIcon,
+  BookmarkIcon as BookmarkOutlineIcon,
   BriefcaseIcon,
   CurrencyDollarIcon,
   MagnifyingGlassIcon,
-  ShareIcon,
+  PlusCircleIcon,
 } from "@heroicons/react/24/outline";
-import Divider from "@/components/core-ui/Divider";
+import { BookmarkIcon as BookmarkSolidIcon } from "@heroicons/react/24/solid";
+import { useEffect, useState, useCallback } from "react";
+import HttpService from "@/core/http.service";
 import PortalLayout from "@/components/layouts/portal/PortalLayout";
+import { useAuth } from "@/providers/AuthProvider";
+import { Link, useNavigate } from "react-router-dom";
+import JobFilters, { JobFilters as JobFiltersType } from "@/components/jobs/JobFilters/JobFilters";
+import JobDetailsModal from "@/components/jobs/JobDetailsModal/JobDetailsModal";
+import debounce from "lodash/debounce";
 
-const jobs = [
-  {
-    id: 1,
-    title: "UX/UI Designer",
-    company: "Google",
-    location: "Mountain View, California",
-    tags: ["Remote", "Full-time", "5+ years"],
-    salary: "$100k - $120k/yr",
-    time: "5min ago",
-  },
-  {
-    id: 2,
-    title: "Software Engineer",
-    company: "Facebook",
-    location: "Menlo Park, California",
-    tags: ["Remote", "Full-time", "5+ years"],
-    salary: "$100k - $120k/yr",
-    time: "5min ago",
-  },
-  {
-    id: 3,
-    title: "Product Manager",
-    company: "Amazon",
-    location: "Seattle, Washington",
-    tags: ["Remote", "Full-time", "5+ years"],
-    salary: "$100k - $120k/yr",
-    time: "5min ago",
-  },
-  {
-    id: 4,
-    title: "Data Scientist",
-    company: "Microsoft",
-    location: "Redmond, Washington",
-    tags: ["Remote", "Full-time", "5+ years"],
-    salary: "$100k - $120k/yr",
-    time: "5min ago",
-  },
-  {
-    id: 5,
-    title: "UX/UI Designer",
-    company: "Google",
-    location: "Mountain View, California",
-    tags: ["Remote", "Full-time", "5+ years"],
-    salary: "$100k - $120k/yr",
-    time: "5min ago",
-  },
-  {
-    id: 6,
-    title: "Software Engineer",
-    company: "Facebook",
-    location: "Menlo Park, California",
-    tags: ["Remote", "Full-time", "5+ years"],
-    salary: "$100k - $120k/yr",
-    time: "5min ago",
-  },
-  {
-    id: 7,
-    title: "Product Manager",
-    company: "Amazon",
-    location: "Seattle, Washington",
-    tags: ["Remote", "Full-time", "5+ years"],
-    salary: "$100k - $120k/yr",
-    time: "5min ago",
-  },
-  {
-    id: 8,
-    title: "Data Scientist",
-    company: "Microsoft",
-    location: "Redmond, Washington",
-    tags: ["Remote", "Full-time", "5+ years"],
-    salary: "$100k - $120k/yr",
-    time: "5min ago",
-  },
-  {
-    id: 9,
-    title: "UX/UI Designer",
-    company: "Google",
-    location: "Mountain View, California",
-    tags: ["Remote", "Full-time", "5+ years"],
-    salary: "$100k - $120k/yr",
-    time: "5min ago",
-  },
-];
+const httpService = HttpService.getInstance();
+
+interface Job {
+  _id: string;
+  job_name: string;
+  job_description: string;
+  job_location: string;
+  salary: string;
+  requirements: string;
+  required_qualifications: string;
+  visa_sponsorship: boolean;
+  travel_benefits: boolean;
+  created_date: string;
+  company_id?: {
+    company_name: string;
+  };
+  posted_by?: {
+    email: string;
+  };
+  applicants_count?: number;
+  is_saved?: boolean;
+}
+
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
+const initialPagination: Pagination = {
+  total: 0,
+  page: 1,
+  limit: 10,
+  pages: 0
+};
 
 const HomePage = () => {
-  return (
-    <PortalLayout title="Home">
-      <aside className="sticky top-24 hidden w-80 shrink-0 xl:block">
-        <div className="overflow-hidden rounded-lg bg-white shadow">
-          <div className="px-4 py-5 sm:p-6">
-            <h4 className="text-lg font-semibold text-gray-900">Filters</h4>
+  const navigate = useNavigate();
+  const { userType, isAuthenticated } = useAuth();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [pagination, setPagination] = useState<Pagination>(initialPagination);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
+  const [filters, setFilters] = useState<JobFiltersType>({
+    location: null,
+    jobType: [],
+    salaryRange: {
+      min: null,
+      max: null,
+    },
+    experienceLevel: [],
+    workMode: [],
+    benefits: [],
+    postedDate: null,
+  });
+  const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const MAX_RETRIES = 3;
 
-            <div className="py-5">
-              <Divider />
+  useEffect(() => {
+    console.log('HomePage - Auth State:', { isAuthenticated, userType });
+    if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to login');
+      navigate('/login');
+      return;
+    }
+    if (!userType) {
+      console.log('User type not defined');
+      setError('User type not defined. Please log in again.');
+      return;
+    }
+  }, [isAuthenticated, userType, navigate]);
+
+  // Create a debounced version of fetchJobs
+  const debouncedFetchJobs = useCallback(
+    debounce(async (page: number, search: string, currentFilters: JobFiltersType) => {
+      try {
+        setLoading(true);
+        const endpoint = userType === "hr_recruiter" ? '/jobs/company' : '/jobs';
+        
+        // Build query parameters
+        const params: any = {
+          page,
+          limit: 10,
+          search
+        };
+
+        // Add filter parameters
+        if (currentFilters.location) {
+          params.location = currentFilters.location;
+        }
+        if (currentFilters.jobType.length > 0) {
+          params.jobType = currentFilters.jobType;
+        }
+        if (currentFilters.salaryRange.min !== null) {
+          params.minSalary = currentFilters.salaryRange.min;
+        }
+        if (currentFilters.salaryRange.max !== null) {
+          params.maxSalary = currentFilters.salaryRange.max;
+        }
+        if (currentFilters.experienceLevel.length > 0) {
+          params.experienceLevel = currentFilters.experienceLevel;
+        }
+        if (currentFilters.workMode.length > 0) {
+          params.workMode = currentFilters.workMode;
+        }
+        if (currentFilters.benefits.length > 0) {
+          params.benefits = currentFilters.benefits;
+        }
+        if (currentFilters.postedDate) {
+          params.postedDate = currentFilters.postedDate;
+        }
+        
+        // Log the full request details
+        console.log('Fetching jobs with details:', {
+          endpoint,
+          fullUrl: `${httpService.getBaseUrl()}${endpoint}`,
+          params,
+          userType,
+          isAuthenticated,
+          headers: httpService.getHeaders()
+        });
+        
+        if (!userType) {
+          throw new Error('User type not defined');
+        }
+
+        // Make the request with explicit headers
+        const response = await httpService.get<{ jobs: Job[], pagination: Pagination }>(
+          endpoint,
+          {
+            params,
+            headers: {
+              ...httpService.getHeaders(),
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          }
+        );
+        
+        // Log the raw response first
+        console.log('Raw API Response:', response);
+        
+        // Log the full response
+        console.log('Jobs API Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+          data: response.data,
+          config: response.config
+        });
+        
+        // Check if response exists
+        if (!response) {
+          console.error('No response received from server');
+          throw new Error('No response received from server');
+        }
+
+        // Check if response.data exists
+        if (!response.data) {
+          console.error('No data in response:', response);
+          throw new Error('No data received from server');
+        }
+
+        // Handle both possible response formats
+        let jobsData: Job[];
+        let paginationData: Pagination;
+
+        if (Array.isArray(response.data)) {
+          jobsData = response.data;
+          paginationData = {
+            total: jobsData.length,
+            page: page,
+            limit: 10,
+            pages: Math.ceil(jobsData.length / 10)
+          };
+        } else if (response.data.jobs && Array.isArray(response.data.jobs)) {
+          jobsData = response.data.jobs;
+          paginationData = response.data.pagination || {
+            total: jobsData.length,
+            page: page,
+            limit: 10,
+            pages: Math.ceil(jobsData.length / 10)
+          };
+        } else {
+          console.error('Invalid response data format:', response.data);
+          throw new Error('Invalid jobs data format received from server');
+        }
+
+        // Validate jobs data
+        if (!Array.isArray(jobsData)) {
+          console.error('Invalid jobs data format:', response.data);
+          throw new Error('Invalid jobs data format received from server');
+        }
+
+        // Log the processed data
+        console.log('Processed jobs data:', jobsData);
+        console.log('Processed pagination info:', paginationData);
+
+        setJobs(jobsData);
+        setPagination(paginationData);
+        setError(null);
+        setRetryCount(0);
+      } catch (err: any) {
+        // Enhanced error logging
+        console.error('Error fetching jobs:', {
+          error: err,
+          message: err.message,
+          response: err.response,
+          status: err.response?.status,
+          data: err.response?.data,
+          config: err.config,
+          stack: err.stack
+        });
+        
+        // Check if it's a schema error
+        const isSchemaError = err.response?.data?.message?.includes('Schema hasn\'t been registered');
+        
+        if (isSchemaError) {
+          setError('The server is currently experiencing technical difficulties. Please try again later.');
+          setJobs([]);
+          setPagination(initialPagination);
+          return;
+        }
+
+        // Check if it's an authentication error
+        if (err.response?.status === 401) {
+          console.log('Authentication error, redirecting to login');
+          navigate('/login');
+          return;
+        }
+        
+        // For other errors, retry up to MAX_RETRIES times
+        if (retryCount < MAX_RETRIES) {
+          console.log(`Retrying fetch (attempt ${retryCount + 1} of ${MAX_RETRIES})...`);
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => debouncedFetchJobs(page, search, currentFilters), 2000);
+          setError('Refreshing data...');
+          return;
+        }
+        
+        setError(err.response?.data?.message || 'Failed to fetch jobs. Please try again later.');
+        setJobs([]);
+        setPagination(initialPagination);
+      } finally {
+        setLoading(false);
+      }
+    }, 500),
+    [userType, retryCount, navigate]
+  );
+
+  useEffect(() => {
+    if (isAuthenticated && userType) {
+      debouncedFetchJobs(1, searchQuery, filters);
+    }
+  }, [searchQuery, filters, isAuthenticated, userType, debouncedFetchJobs]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    debouncedFetchJobs(1, searchQuery, filters);
+  };
+
+  const handleApplyJob = async (jobId: string) => {
+    try {
+      await httpService.post(`/job/${jobId}/apply`);
+      // Show success message
+      alert("Application submitted successfully!");
+      // Refresh the jobs list
+      debouncedFetchJobs(1, searchQuery, filters);
+    } catch (error: any) {
+      console.error('Error applying for job:', error);
+      alert(error.response?.data?.message || 'Failed to apply for job');
+    }
+  };
+
+  const handleSaveJob = async (jobId: string) => {
+    try {
+      if (savedJobs.has(jobId)) {
+        // Unsave job
+        await httpService.delete(`/jobs/${jobId}/save`);
+        setSavedJobs(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(jobId);
+          return newSet;
+        });
+      } else {
+        // Save job
+        await httpService.post(`/jobs/${jobId}/save`);
+        setSavedJobs(prev => new Set(prev).add(jobId));
+      }
+    } catch (error: any) {
+      console.error('Error saving/unsaving job:', error);
+      alert(error.response?.data?.message || 'Failed to save/unsave job');
+    }
+  };
+
+  useEffect(() => {
+    const fetchSavedJobs = async () => {
+      if (isAuthenticated && userType === 'job_seeker') {
+        try {
+          const response = await httpService.get<{ saved_jobs: { job_id: { _id: string } }[] }>('/jobs/saved');
+          const savedJobsSet = new Set(response.data.saved_jobs.map(saved => saved.job_id._id));
+          setSavedJobs(savedJobsSet);
+        } catch (error) {
+          console.error('Error fetching saved jobs:', error);
+        }
+      }
+    };
+
+    fetchSavedJobs();
+  }, [isAuthenticated, userType]);
+
+  const renderError = () => (
+    <div className="text-center py-10">
+      <div className="rounded-md bg-red-50 p-4">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error loading jobs</h3>
+            <div className="mt-2 text-sm text-red-700">
+              <p>{error}</p>
             </div>
-
-            {/* Sort By [Most Recent, A-Z, Top Salary, Trending] Radio Groups Grid */}
-            <div className="">
-              <h5 className="text-sm font-semibold text-gray-900 mb-2">
-                Sort By
-              </h5>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { id: "most-recent", name: "Most Recent" },
-                  { id: "a-z", name: "A-Z" },
-                  { id: "top-salary", name: "Top Salary" },
-                  { id: "trending", name: "Trending" },
-                ].map((item) => (
-                  <div key={item.id} className="flex items-center gap-x-2">
-                    <input
-                      id={item.id}
-                      name="sort-by"
-                      type="radio"
-                      className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
-                    />
-                    <label htmlFor={item.id} className="text-sm text-gray-900">
-                      {item.name}
-                    </label>
-                  </div>
-                ))}
+            {retryCount >= MAX_RETRIES && (
+              <div className="mt-4">
+                <button
+                  onClick={() => {
+                    setRetryCount(0);
+                    debouncedFetchJobs(1, searchQuery, filters);
+                  }}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Try Again
+                </button>
               </div>
-            </div>
-            {/* Sort By [Most Recent, A-Z, Top Salary, Trending] Radio Groups Grid End */}
-
-            <div className="py-5">
-              <Divider />
-            </div>
-
-            {/* Job Salary Filter Inputs */}
-            <div>
-              <h5 className="text-sm font-semibold text-gray-900 mb-2">
-                Salary
-              </h5>
-              <div className="flex gap-x-4">
-                <input
-                  type="text"
-                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 w-1/2"
-                  placeholder="Min"
-                />
-                <input
-                  type="text"
-                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 w-1/2"
-                  placeholder="Max"
-                />
-              </div>
-            </div>
-            {/* Job Salary Filter Inputs End */}
-
-            <div className="py-5">
-              <Divider />
-            </div>
-
-            {/* Job Type [Full-time, Part-time, Remote] Checkbox Group */}
-            <div>
-              <h5 className="text-sm font-semibold text-gray-900 mb-2">
-                Job Type
-              </h5>
-              <div className="grid grid-cols-2 gap-4">
-                {["Full-time", "Part-time", "Remote", "Voluntier"].map(
-                  (item) => (
-                    <div key={item} className="flex items-center gap-x-2">
-                      <div className="relative flex items-start">
-                        <div className="flex h-6 items-center">
-                          <input
-                            id="comments"
-                            aria-describedby="comments-description"
-                            name="comments"
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                          />
-                        </div>
-                        <div className="ml-3 text-sm leading-6">
-                          <label
-                            htmlFor="comments"
-                            className="font-md text-gray-900"
-                          >
-                            {item}
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-            {/* Job Type [Full-time, Part-time, Remote] Checkbox Group End */}
-
-            <div className="py-5">
-              <Divider />
-            </div>
-
-            {/* Job Experience [1-3 years, 3-5 years, 5+ years] Checkbox Group */}
-            <div>
-              <h5 className="text-sm font-semibold text-gray-900 mb-2">
-                Experience
-              </h5>
-              <div className="grid grid-cols-2 gap-4">
-                {["1-3 years", "3-5 years", "5+ years"].map((item) => (
-                  <div key={item} className="flex items-center gap-x-2">
-                    <div className="relative flex items-start">
-                      <div className="flex h-6 items-center">
-                        <input
-                          id="comments"
-                          aria-describedby="comments-description"
-                          name="comments"
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                        />
-                      </div>
-                      <div className="ml-3 text-sm leading-6">
-                        <label
-                          htmlFor="comments"
-                          className="font-md text-gray-900"
-                        >
-                          {item}
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Job Experience [1-3 years, 3-5 years, 5+ years] Checkbox Group End */}
-
-            <div className="py-5">
-              <Divider />
-            </div>
-
-            {/* Job Location [Remote, On-site, Hybrid] Checkbox Group */}
-            <div>
-              <h5 className="text-sm font-semibold text-gray-900 mb-2">
-                Location
-              </h5>
-              <div className="grid grid-cols-2 gap-4">
-                {["Remote", "On-site", "Hybrid"].map((item) => (
-                  <div key={item} className="flex items-center gap-x-2">
-                    <div className="relative flex items-start">
-                      <div className="flex h-6 items-center">
-                        <input
-                          id="comments"
-                          aria-describedby="comments-description"
-                          name="comments"
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                        />
-                      </div>
-                      <div className="ml-3 text-sm leading-6">
-                        <label
-                          htmlFor="comments"
-                          className="font-md text-gray-900"
-                        >
-                          {item}
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Job Location [Remote, On-site, Hybrid] Checkbox Group End */}
+            )}
           </div>
         </div>
-      </aside>
+      </div>
+    </div>
+  );
 
+  if (!isAuthenticated) {
+    return null; // Will be redirected by the useEffect
+  }
+
+  if (!userType) {
+    return (
+      <PortalLayout title="Error">
+        <div className="text-center py-10">
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Authentication Error</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>Please log in again to continue.</p>
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Go to Login
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </PortalLayout>
+    );
+  }
+
+  return (
+    <PortalLayout title={userType === "hr_recruiter" ? "Posted Jobs" : "Find Jobs"}>
       <main className="flex-1">
-        {/* Jobs Search Area Mix Search Input with Location Dropdown & Search Button */}
-        <div className="flex gap-x-4 justify-between">
+        {/* Jobs Search Area */}
+        <form onSubmit={handleSearch} className="flex gap-x-4 justify-between">
           <div className="flex gap-x-4 mb-4">
             <div className="relative rounded-md shadow-sm w-80">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
               </div>
               <input
-                type="email"
-                name="email"
-                id="email"
+                type="text"
+                name="search"
+                id="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="block w-full h-10 rounded-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                placeholder="Search Jobs"
+                placeholder={userType === "hr_recruiter" ? "Search posted jobs..." : "Search jobs..."}
               />
             </div>
 
             <button
-              type="button"
+              type="submit"
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             >
               Search
             </button>
           </div>
-        </div>
-        {/* Jobs Search Area Mix Search Input with Location Dropdown & Search Button End */}
+
+          {userType === "hr_recruiter" && (
+            <Link
+              to="/post-job"
+              className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            >
+              <PlusCircleIcon className="h-5 w-5" />
+              Post a Job
+            </Link>
+          )}
+        </form>
 
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 mb-6">
-            Search Results
+            {userType === "hr_recruiter" ? "Posted Jobs" : "Search Results"}
           </h3>
 
-          {/* Search Results Count */}
           <div className="flex items-center gap-x-2">
-            <span className="text-sm text-gray-500">20,000 Results Found</span>
-          </div>
-        </div>
-
-        {/* Jobs List Grid extra-large - 5 columns , large - 4 columns, medium - 3 columns, small - 2 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
-          {jobs.map((job, index) => (
-            <div
-              key={job.id}
-              className={`overflow-hidden rounded-lg bg-white shadow cursor-pointer ${
-                index === 0 ? "border border-indigo-600" : ""
-              }`}
-            >
-              <div className="px-4 py-5 sm:p-6">
-                {/* Job Title, Company, Location */}
-                <div className="flex gap-x-4 justify-between">
-                  <div className="flex gap-x-2">
-                    <div className="rounded w-12 h-12 bg-gray-200 flex items-center justify-center">
-                      <BriefcaseIcon className="h-6 w-6 text-indigo-600" />
-                    </div>
-
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900">
-                        {job.title}
-                      </h4>
-                      <p className="text-sm text-gray-500">{job.company}</p>
-                      <p className="text-sm text-gray-500">{job.location}</p>
-                    </div>
-                  </div>
-
-                  {/* Save Job Action */}
-                  <div className="flex items-start">
-                    <button
-                      type="button"
-                      className="text-sm font-semibold text-gray-900  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-200"
-                    >
-                      <BookmarkIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                  {/* Save Job Action End */}
-                </div>
-                {/* Job Title, Company, Location End */}
-
-                {/* Tags */}
-                <div className="flex gap-x-2 mt-2">
-                  {job.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs text-gray-700 ring-1 ring-inset ring-gray-600/10"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                {/* Tags End */}
-
-                {/* Salary & Time */}
-                <div className="flex items-center gap-x-2 mt-2 justify-between">
-                  <div className="flex items-center gap-x-2">
-                    <CurrencyDollarIcon className="h-6 w-6 text-indigo-600" />
-                    <span className="text-sm text-gray-500 fs-7">
-                      {job.salary}
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-400">{job.time}</span>
-                </div>
-                {/* Salary & Time End */}
-              </div>
-            </div>
-          ))}
-        </div>
-        {/* Jobs List Scrollable End */}
-      </main>
-
-      <aside className="sticky top-24 hidden w-80 shrink-0 xl:block">
-        <div className="overflow-hidden rounded-lg bg-white shadow">
-          <div className="px-4 py-5 sm:p-6 gap-4">
-            {/* Job Details */}
-            <div className="flex gap-x-4 justify-between">
-              <div className="rounded w-16 h-16 bg-gray-200 flex items-center justify-center">
-                <BriefcaseIcon className="h-10 w-10 text-indigo-600" />
-              </div>
-
-              {/* Share Job & Save Job Actions */}
-              <div className="flex gap-4 items-start">
-                <button
-                  type="button"
-                  className=" text-sm font-semibold text-gray-900  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-200"
-                >
-                  <ShareIcon className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  className="text-sm font-semibold text-gray-900  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-200"
-                >
-                  <BookmarkIcon className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-2">
-              <h2 className="text-lg font-semibold text-gray-900">
-                UX/UI Designer
-              </h2>
-              <p className="text-sm text-gray-500">
-                Google - Mountain View, California
-              </p>
-            </div>
-            {/* Job Details End */}
-
-            {/* Applications Numbers */}
-            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs mt-2 text-blue-700 ring-1 ring-inset ring-blue-700/10">
-              1000+ Applications
+            <span className="text-sm text-gray-500">
+              {pagination?.total || 0} Results Found
             </span>
-            {/* Applications Numbers End */}
-
-            <div className="py-5">
-              <Divider />
-            </div>
-
-            {/* Job Details, Job Type, Experience, Posted Date */}
-            <div className="flex gap-4 flex-col">
-              <div className="flex gap-x-4 justify-between">
-                <div>
-                  <h3 className="text-sm text-gray-900 font-semibold mb-2">
-                    Job Type
-                  </h3>
-                  <p className="text-sm text-gray-400">Full-time</p>
-                </div>
-                <div>
-                  <h3 className="text-sm text-gray-900 font-semibold mb-2">
-                    Experience
-                  </h3>
-                  <p className="text-sm text-gray-400">5+ years</p>
-                </div>
-              </div>
-              <div className="flex gap-x-4 justify-between">
-                <div>
-                  <h3 className="text-sm text-gray-900 font-semibold mb-2">
-                    Position
-                  </h3>
-                  <p className="text-sm text-gray-400">UX/UI Designer</p>
-                </div>
-                <div>
-                  <h3 className="text-sm text-gray-900 font-semibold mb-2">
-                    Date Posted
-                  </h3>
-                  <p className="text-sm text-gray-400">5min ago</p>
-                </div>
-              </div>
-            </div>
-            {/* Job Details, Job Type, Experience, Posted Date End */}
-
-            <div className="py-5">
-              <Divider />
-            </div>
-
-            {/* Job Description */}
-            <div>
-              <h3 className="text-sm text-gray-900 font-semibold mb-2">
-                Description
-              </h3>
-              <p className="text-sm text-gray-500">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac
-                purus sit amet nisl tincidunt tincidunt. Nullam ut lacinia
-                mauris. Nullam in nunc nec nunc ultricies fermentum. Nullam nec
-                libero at odio ultricies lacinia. Nullam nec libero at odio
-                ultricies lacinia. Nullam nec libero at odio ultricies lacinia.
-              </p>
-            </div>
-            {/* Job Description End */}
-
-            <div className="py-5">
-              <Divider />
-            </div>
-
-            {/* Base Salary  & Apply Button */}
-            <div className="flex gap-4 flex-col">
-              <div className="flex gap-x-4 justify-between">
-                <div>
-                  <h3 className="text-sm text-gray-900 font-semibold mb-2">
-                    Base Salary
-                  </h3>
-                  <p className="text-sm text-gray-400">$100k - $120k/yr</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-              >
-                Apply Now
-              </button>
-            </div>
-            {/* Base Salary  & Apply Button End */}
           </div>
         </div>
-      </aside>
+
+        <div className="flex gap-x-8">
+          {/* Mobile Filters */}
+          <div className="lg:hidden">
+            <JobFilters onFilterChange={setFilters} isMobile={true} />
+          </div>
+
+          {/* Desktop Filters */}
+          <div className="hidden lg:block h-[calc(100vh-12rem)] overflow-y-auto pr-4">
+            <JobFilters onFilterChange={setFilters} />
+          </div>
+
+          {/* Jobs List */}
+          <div className="flex-1 h-[calc(100vh-12rem)] overflow-y-auto">
+            {loading ? (
+              <div className="text-center py-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading jobs...</p>
+              </div>
+            ) : error ? (
+              renderError()
+            ) : jobs.length === 0 ? (
+              <div className="text-center py-10">
+                <p className="text-gray-600">No jobs found</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+                {jobs.map((job) => (
+                  <div
+                    key={job._id}
+                    className="overflow-hidden rounded-lg bg-white shadow hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => setSelectedJob(job)}
+                  >
+                    <div className="px-4 py-5 sm:p-6">
+                      <div className="flex gap-x-4 justify-between">
+                        <div className="flex gap-x-2">
+                          <div className="rounded w-12 h-12 bg-gray-200 flex items-center justify-center">
+                            <BriefcaseIcon className="h-6 w-6 text-indigo-600" />
+                          </div>
+
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900">
+                              {job.job_name}
+                            </h4>
+                            <p className="text-sm text-gray-500">
+                              {job.company_id?.company_name || 'Company Information Not Available'}
+                            </p>
+                            <p className="text-sm text-gray-500">{job.job_location}</p>
+                          </div>
+                        </div>
+
+                        {userType === "job_seeker" && (
+                          <div className="flex items-start gap-x-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleApplyJob(job._id);
+                              }}
+                              className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                            >
+                              Apply
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSaveJob(job._id);
+                              }}
+                              className={`text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-200 ${
+                                savedJobs.has(job._id) ? 'text-indigo-600' : 'text-gray-900'
+                              }`}
+                            >
+                              {savedJobs.has(job._id) ? (
+                                <BookmarkSolidIcon className="h-5 w-5" />
+                              ) : (
+                                <BookmarkOutlineIcon className="h-5 w-5" />
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        {userType === "hr_recruiter" && job.applicants_count !== undefined && (
+                          <div className="flex items-center gap-x-2">
+                            <Link
+                              to={`/applicants?job_id=${job._id}`}
+                              className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {job.applicants_count} Applicants
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-x-2 mt-2">
+                        {job.visa_sponsorship && (
+                          <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs text-gray-700 ring-1 ring-inset ring-gray-600/10">
+                            Visa Sponsorship
+                          </span>
+                        )}
+                        {job.travel_benefits && (
+                          <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs text-gray-700 ring-1 ring-inset ring-gray-600/10">
+                            Travel Benefits
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-x-2 mt-2 justify-between">
+                        <div className="flex items-center gap-x-2">
+                          <CurrencyDollarIcon className="h-6 w-6 text-indigo-600" />
+                          <span className="text-sm text-gray-500">{job.salary}</span>
+                        </div>
+                        <span className="text-sm text-gray-400">
+                          {new Date(job.created_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Job Details Modal */}
+            {selectedJob && (
+              <JobDetailsModal
+                isOpen={!!selectedJob}
+                onClose={() => setSelectedJob(null)}
+                job={selectedJob}
+              />
+            )}
+
+            {/* Pagination */}
+            {!loading && !error && pagination?.pages > 1 && (
+              <div className="mt-8 flex justify-center">
+                <nav className="flex items-center gap-x-2">
+                  <button
+                    onClick={() => debouncedFetchJobs(pagination.page - 1, searchQuery, filters)}
+                    disabled={pagination.page === 1}
+                    className="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-700">
+                    Page {pagination.page} of {pagination.pages}
+                  </span>
+                  <button
+                    onClick={() => debouncedFetchJobs(pagination.page + 1, searchQuery, filters)}
+                    disabled={pagination.page === pagination.pages}
+                    className="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
     </PortalLayout>
   );
 };
 
 export default HomePage;
+       

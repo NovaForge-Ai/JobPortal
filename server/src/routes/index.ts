@@ -3,6 +3,7 @@ import UsersRoutes from "./users.routes";
 import JobsRoutes from "./jobs.routes";
 import JobApplicationsRoutes from "./job-applications.routers";
 import AuthRoutes from "./auth.routes";
+import companyRoutes from "./company.routes";
 import { StatusCodes } from "http-status-codes";
 import { ApiError } from "../errors/ApiError";
 import { authMiddleware } from "../middlewares/auth.middleware";
@@ -10,7 +11,13 @@ import { authMiddleware } from "../middlewares/auth.middleware";
 export default class Routes {
   constructor(app: Application) {
     app.use("/api/v1/auth", new AuthRoutes().router);
-    app.use("/api/v1/jobs", authMiddleware, new JobsRoutes().router);
+    
+    // Jobs routes
+    app.use("/api/v1/jobs", new JobsRoutes().router);
+    
+    // Company routes
+    app.use("/api/v1", companyRoutes);
+    
     app.use("/api/v1/users", authMiddleware, new UsersRoutes().router);
     app.use("/api/v1/job", authMiddleware, new JobApplicationsRoutes().router);
 

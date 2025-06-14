@@ -1,149 +1,185 @@
-import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from "axios";
-
-import { HttpMethod } from "@/enums";
-import { IService } from "@/interfaces";
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import StorageService from "./storage.service";
 
-export default class HttpService {
-  private http: AxiosInstance;
-  private baseURL: string = import.meta.env.VITE_API_URL as string;
+/// <reference types="vite/client" />
 
-  constructor() {
-    this.http = axios.create({
+class HttpService {
+  private static instance: HttpService;
+  private axiosInstance: AxiosInstance;
+  private baseURL: string;
+
+  private constructor() {
+    this.baseURL = import.meta.env.VITE_API_URL || "http://localhost:5053/api/v1";
+    this.axiosInstance = axios.create({
       baseURL: this.baseURL,
-      withCredentials: false,
-      headers: this.setupHeaders(),
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      withCredentials: true,
+      // Add these options to handle CORS
+      validateStatus: function (status) {
+        return status >= 200 && status < 500; // Accept all status codes less than 500
+      },
     });
+
+    this.setupInterceptors();
   }
 
-  // Get authorization token from cookies
-  private get getAuthorization() {
-    const accessToken = StorageService.getItem("access_token") || "";
-    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+  public static getInstance(): HttpService {
+    if (!HttpService.instance) {
+      HttpService.instance = new HttpService();
+    }
+    return HttpService.instance;
   }
 
-  // Initialize service configuration
-  public service() {
-    this.injectRequestInterceptor();
-
-    return this;
+  public getBaseUrl(): string {
+    return this.baseURL;
   }
 
-  // Setup headers
-  private setupHeaders(hasAttachment = false) {
+  public getHeaders(): Record<string, string> {
+    const token = StorageService.getItem("access_token");
     return {
-      "Content-Type": hasAttachment
-        ? "multipart/form-data"
-        : "application/json",
-      ...this.getAuthorization,
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
   }
 
-  // Handle HTTP requests
-  private async request<T>(
-    method: HttpMethod,
-    url: string,
-    options: AxiosRequestConfig
-  ): Promise<T> {
-    try {
-      const response: AxiosResponse<T> = await this.http.request<T>({
-        method,
-        url,
-        ...options,
-      });
-
-      return response.data;
-    } catch (error) {
-      return this.normalizeError(error);
-    }
-  }
-
-  // Perform GET request
-  public async get<T>(
-    url: string,
-    params?: IService.IParams,
-    hasAttachment = false
-  ): Promise<T> {
-    return this.request<T>(HttpMethod.GET, url, {
-      params,
-      headers: this.setupHeaders(hasAttachment),
-      signal: params?.signal,
-    });
-  }
-
-  // Perform POST request
-  public async post<T, P>(
-    url: string,
-    payload?: P,
-    params?: IService.IParams,
-    hasAttachment = false
-  ): Promise<T> {
-    return this.request<T>(HttpMethod.POST, url, {
-      data: payload,
-      params,
-      headers: this.setupHeaders(hasAttachment),
-      signal: params?.signal,
-    });
-  }
-
-  // Perform PUT request
-  public async put<T, P>(
-    url: string,
-    payload: P,
-    params?: IService.IParams,
-    hasAttachment = false
-  ): Promise<T> {
-    return this.request<T>(HttpMethod.PUT, url, {
-      data: payload,
-      params,
-      headers: this.setupHeaders(hasAttachment),
-      signal: params?.signal,
-    });
-  }
-
-  // Perform DELETE request
-  public async delete<T>(
-    url: string,
-    params?: IService.IParams,
-    hasAttachment = false
-  ): Promise<T> {
-    return this.request<T>(HttpMethod.DELETE, url, {
-      params,
-      headers: this.setupHeaders(hasAttachment),
-      signal: params?.signal,
-    });
-  }
-
-  // Inject request interceptors for request and response
-  private injectRequestInterceptor() {
+  private setupInterceptors() {
     // Request interceptor
-    this.http.interceptors.request.use(
-      (config) => {
-        // Perform an action before sending the request
-        // TODO: implement an NProgress loader
+    this.axiosInstance.interceptors.request.use(
+      (config: InternalAxiosRequestConfig) => {
+        const token = StorageService.getItem("access_token");
+        console.log('Request interceptor - Token:', token);
+        if (token) {
+          config.headers = config.headers || {};
+          config.headers.Authorization = `Bearer ${token}`;
+          config.headers.Accept = "application/json";
+          console.log('Request headers:', config.headers);
+        }
         return config;
       },
-      (error) => {
+      (error: unknown) => {
+        console.error('Request interceptor error:', error);
         return Promise.reject(error);
       }
     );
 
     // Response interceptor
-    this.http.interceptors.response.use(
-      (response) => {
-        // Do something with response data
+    this.axiosInstance.interceptors.response.use(
+      (response: AxiosResponse) => {
+        console.log('Response interceptor - Status:', response.status);
+        console.log('Response interceptor - Headers:', response.headers);
+        console.log('Response interceptor - Data:', response.data);
         return response;
       },
-      (error) => {
-        // Implement a global error handler
+      (error: any) => {
+        console.error('Response interceptor - Error:', error);
+        console.error('Response interceptor - Error response:', error.response);
+        console.error('Response interceptor - Error data:', error.response?.data);
+        console.error('Response interceptor - Error status:', error.response?.status);
+        console.error('Response interceptor - Error message:', error.message);
+        
+        if (error.response?.status === 401) {
+          console.log('Unauthorized access, clearing storage');
+          StorageService.removeItem("access_token");
+          StorageService.removeItem("user");
+          window.location.href = "/login";
+        }
         return Promise.reject(error);
       }
     );
   }
 
-  // Normalize errors
-  private normalizeError(error: any) {
-    // Implement a global error handler
-    return Promise.reject(error);
+  public async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    try {
+      console.log('Making GET request to:', url);
+      const requestConfig = {
+        ...config,
+        headers: this.getHeaders(),
+        // Add these options to handle CORS
+        withCredentials: true,
+        validateStatus: function (status: number) {
+          return status >= 200 && status < 500;
+        },
+      };
+      console.log('Request config:', requestConfig);
+      const response = await this.axiosInstance.get<T>(url, requestConfig);
+      console.log('GET response:', response);
+      return response;
+    } catch (error: any) {
+      console.error('GET request error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
+      throw error;
+    }
+  }
+
+  public async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    try {
+      console.log('Making POST request to:', url);
+      console.log('Request data:', data);
+      const requestConfig = {
+        ...config,
+        headers: this.getHeaders(),
+        withCredentials: true,
+      };
+      const response = await this.axiosInstance.post<T>(url, data, requestConfig);
+      console.log('POST response:', response);
+      return response;
+    } catch (error: any) {
+      console.error('POST request error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
+      throw error;
+    }
+  }
+
+  public async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    try {
+      console.log('Making PUT request to:', url);
+      console.log('Request data:', data);
+      const requestConfig = {
+        ...config,
+        headers: this.getHeaders(),
+        withCredentials: true,
+      };
+      const response = await this.axiosInstance.put<T>(url, data, requestConfig);
+      console.log('PUT response:', response);
+      return response;
+    } catch (error: any) {
+      console.error('PUT request error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
+      throw error;
+    }
+  }
+
+  public async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    try {
+      console.log('Making DELETE request to:', url);
+      const requestConfig = {
+        ...config,
+        headers: this.getHeaders(),
+        withCredentials: true,
+      };
+      const response = await this.axiosInstance.delete<T>(url, requestConfig);
+      console.log('DELETE response:', response);
+      return response;
+    } catch (error: any) {
+      console.error('DELETE request error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
+      throw error;
+    }
+  }
+
+  public setAuthToken(token: string) {
+    console.log('Setting auth token:', token);
+    StorageService.setItem("access_token", token);
+    this.axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   }
 }
+
+export default HttpService;

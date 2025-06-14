@@ -3,4 +3,10 @@ export interface IRegisterPayload {
   email: string;
   password: string;
   confirmPassword?: string;
+  // Company specific fields
+  company_name?: string;
+  company_website_url?: string;
+  establishment_date?: string;
+  business_stream?: string;
+  profile_description?: string;
 }

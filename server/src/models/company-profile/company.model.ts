@@ -26,6 +26,11 @@ const CompanySchema = new mongoose.Schema(
       required: true,
       length: 500,
     },
+    posted_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "UserAccount",
+      required: true
+    }
   },
   {
     collection: "company",
