@@ -3,6 +3,9 @@ export interface IRegisterPayload {
   email: string;
   password: string;
   confirmPassword?: string;
+  // Job seeker fields
+  phone?: string;
+  address?: string;
   // Company specific fields
   company_name?: string;
   company_website_url?: string;

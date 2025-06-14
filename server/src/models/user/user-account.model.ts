@@ -42,6 +42,11 @@ const UserAccountSchema = new mongoose.Schema(
       required: false,
       length: 15,
     },
+    address: {
+      type: String,
+      required: false,
+      length: 255,
+    },
     sms_notification_active: {
       type: Boolean,
       required: false,

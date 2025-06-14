@@ -14,6 +14,15 @@ export class RegisterUserAccountRequest {
   @MaxLength(20, { message: "Password must not exceed 20 characters" })
   password!: string;
 
+  // Optional fields for Job Seeker
+  @IsOptional()
+  @IsString({ message: "Phone number must be a string" })
+  phone?: string;
+
+  @IsOptional()
+  @IsString({ message: "Address must be a string" })
+  address?: string;
+
   // Optional fields for HR Recruiter
   @IsOptional()
   @IsString({ message: "Company name must be a string" })

@@ -11,6 +11,9 @@ const FORM_INITIAL_VALUES = {
   password: "",
   confirmPassword: "",
   termsConditions: false,
+  // Job seeker fields
+  phone: "",
+  address: "",
   // Company fields
   company_name: "",
   company_website_url: "",
@@ -46,6 +49,15 @@ const useRegisterForm = () => {
       termsConditions: Yup.boolean()
         .oneOf([true], "You must accept the terms and conditions")
         .required("Terms and conditions must be accepted"),
+      // Job seeker fields validation
+      phone: Yup.string().when("user_type_name", {
+        is: "job_seeker",
+        then: (schema) => schema.required("Phone number is required"),
+      }),
+      address: Yup.string().when("user_type_name", {
+        is: "job_seeker",
+        then: (schema) => schema.required("Address is required"),
+      }),
       // Company fields validation
       company_name: Yup.string().when("user_type_name", {
         is: "hr_recruiter",
@@ -81,6 +93,11 @@ const useRegisterForm = () => {
           user_type_name: values.user_type_name,
           email: values.email,
           password: values.password,
+          // Include job seeker data at root level if user is job seeker
+          ...(values.user_type_name === "job_seeker" && {
+            phone: values.phone,
+            address: values.address,
+          }),
           // Include company data at root level if user is HR recruiter
           ...(values.user_type_name === "hr_recruiter" && {
             company_name: values.company_name,

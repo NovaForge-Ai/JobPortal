@@ -41,6 +41,7 @@ const RegisterForm = () => {
   }, [form.values.user_type_name]);
 
   const isCompanyRegistration = form.values.user_type_name === "hr_recruiter";
+  const isJobSeekerRegistration = form.values.user_type_name === "job_seeker";
 
   return (
     <>
@@ -179,6 +180,58 @@ const RegisterForm = () => {
             )}
           </div>
         </div>
+
+        {isJobSeekerRegistration && (
+          <>
+            <div>
+              <label
+                htmlFor="phone"
+                className="block text-sm font-medium leading-6 text-gray-900"
+              >
+                Phone Number
+                <span className="text-red-500">*</span>
+              </label>
+              <div className="mt-2">
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  required
+                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                  value={form.values.phone}
+                  disabled={form.isSubmitting}
+                  onChange={form.handleChange}
+                  placeholder="Enter your phone number"
+                />
+                {form.errors.phone && <FieldError error={form.errors.phone} />}
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="address"
+                className="block text-sm font-medium leading-6 text-gray-900"
+              >
+                Address
+                <span className="text-red-500">*</span>
+              </label>
+              <div className="mt-2">
+                <textarea
+                  id="address"
+                  name="address"
+                  rows={3}
+                  required
+                  className="block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                  value={form.values.address}
+                  disabled={form.isSubmitting}
+                  onChange={form.handleChange}
+                  placeholder="Enter your address"
+                />
+                {form.errors.address && <FieldError error={form.errors.address} />}
+              </div>
+            </div>
+          </>
+        )}
 
         {isCompanyRegistration && (
           <>
