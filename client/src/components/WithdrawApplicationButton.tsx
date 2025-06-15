@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToastContext } from "@/components/ui/toast-provider";
 import ApplicationService from "@/services/application.service";
 
 interface WithdrawApplicationButtonProps {
@@ -15,7 +15,7 @@ const WithdrawApplicationButton: React.FC<WithdrawApplicationButtonProps> = ({
   disabled = false,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const { toast } = useToastContext();
 
   const handleWithdraw = async () => {
     try {

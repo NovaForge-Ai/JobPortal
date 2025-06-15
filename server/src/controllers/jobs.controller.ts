@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
-import JobPost from "models/job-post.model";
-import Company from "models/company-profile/company.model";
+import JobPost from "../models/job/job_post.model";
+import Company from "../models/company-profile/company.model";
 import SavedJob from "../models/job/saved_job.model";
-import JobApplication, { IJobApplication } from "models/job-application.model";
-import UserAccount from "models/user/user-account.model";
+import JobApplication, { IJobApplication } from "../models/job-application.model";
+import UserAccount from "../models/user/user-account.model";
 import { ApiError } from "../errors/ApiError";
 import { StatusCodes } from "http-status-codes";
 import { CompanySchema } from '../models/company-profile/company.model';
@@ -174,7 +174,7 @@ export default class JobsController {
    * @param req Request
    * @param res Response
    */
-  public static async createJob(req: Request, res: Response, next: NextFunction) {
+  public static async createJob(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       console.log('=== Job Creation Request ===');
       console.log('Headers:', req.headers);
@@ -217,7 +217,7 @@ export default class JobsController {
       }
 
       console.log('Found company:', company.company_name);
-      const user = req.user as UserAccount;
+      const user = req.user as IUserAccountWithType;
       console.log('User ID:', user._id);
 
       const jobPost = new JobPost({
@@ -253,7 +253,7 @@ export default class JobsController {
    * @param req Request
    * @param res Response
    */
-  public static async getJob(req: Request, res: Response, next: NextFunction) {
+  public static async getJob(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
 
@@ -280,11 +280,7 @@ export default class JobsController {
    * @param req Request
    * @param res Response
    */
-  public static async updateJob(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) {
+  public static async updateJob(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     // TODO: Not implemented yet
     res.status(200).send(`⚡️[Server]: JobsController updateJob!`);
   }
@@ -294,11 +290,7 @@ export default class JobsController {
    * @param req Request
    * @param res Response
    */
-  public static async deleteJob(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) {
+  public static async deleteJob(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     // TODO: Not implemented yet
     res.status(200).send(`⚡️[Server]: JobsController deleteJob!`);
   }
@@ -306,12 +298,12 @@ export default class JobsController {
   /**
    * Save a job for a user
    */
-  public static async saveJob(req: Request, res: Response, next: NextFunction) {
+  public static async saveJob(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) {
         throw new Error('User not authenticated');
       }
-      const user = req.user as UserAccount;
+      const user = req.user as IUserAccountWithType;
       const { jobId } = req.params;
 
       // Check if job exists
@@ -340,12 +332,12 @@ export default class JobsController {
   /**
    * Unsave a job for a user
    */
-  public static async unsaveJob(req: Request, res: Response, next: NextFunction) {
+  public static async unsaveJob(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) {
         throw new Error('User not authenticated');
       }
-      const user = req.user as UserAccount;
+      const user = req.user as IUserAccountWithType;
       const { jobId } = req.params;
 
       const result = await SavedJob.deleteOne({
@@ -366,12 +358,12 @@ export default class JobsController {
   /**
    * Get all saved jobs for a user
    */
-  public static async getSavedJobs(req: Request, res: Response, next: NextFunction) {
+  public static async getSavedJobs(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) {
         throw new Error('User not authenticated');
       }
-      const user = req.user as UserAccount;
+      const user = req.user as IUserAccountWithType;
 
       const savedJobs = await SavedJob.find({ user_id: user._id })
         .populate({
