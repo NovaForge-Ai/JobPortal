@@ -20,6 +20,6 @@ async function runSeeders() {
 
 // Export the runSeeders function as default
 export default runSeeders;
-
 // Run the seeders
 runSeeders();
+

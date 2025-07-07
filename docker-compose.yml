@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  client:
+    container_name: jobportal-client
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:5053/api/v1
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  server:
+    container_name: jobportal-server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "5053:5053"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: "development"
+      MONGODB_URI: "mongodb://admin:password123@mongo:27017/jobportal?authSource=admin"
+      JWT_SECRET: "your_jwt_secret_key"
+      PORT: "5053"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5053/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    command: npm run dev
+
+  mongo:
+    container_name: job-portal-mongo
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./server/src/database/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "admin"
+      MONGO_INITDB_ROOT_PASSWORD: "password123"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongodb_data: 

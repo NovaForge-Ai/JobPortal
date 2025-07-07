@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+RUN npm run build
 EXPOSE 5053
 ENV NODE_ENV=development
 ENV JWT_SECRET=your_jwt_secret_key
